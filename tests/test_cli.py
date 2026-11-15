@@ -109,3 +109,37 @@ def test_cli_compare_regression_exit_code(tmp_path: Path):
     assert exit_code == 1
     assert report_file.exists()
     assert "REGRESSION" in report_file.read_text(encoding="utf-8")
+
+
+def test_cli_benchmark_poisson_and_csv(tmp_path: Path):
+    output_json = tmp_path / "poisson_bench.json"
+    output_csv = tmp_path / "trace.csv"
+
+    exit_code = main([
+        "benchmark",
+        "--mock",
+        "--concurrency",
+        "2",
+        "--num-requests",
+        "3",
+        "--max-tokens",
+        "3",
+        "--request-rate",
+        "100.0",
+        "--synthetic-prompts",
+        "--prompt-tokens",
+        "32",
+        "--output",
+        str(output_json),
+        "--export-csv",
+        str(output_csv),
+    ])
+
+    assert exit_code == 0
+    assert output_json.exists()
+    assert output_csv.exists()
+
+    csv_lines = output_csv.read_text(encoding="utf-8").strip().splitlines()
+    assert len(csv_lines) == 4  # Header + 3 requests
+    assert "request_id" in csv_lines[0]
+

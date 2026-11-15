@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import csv
 import json
 import sys
 from pathlib import Path
@@ -11,6 +12,7 @@ from pathlib import Path
 from llm_eval.adapters.mock_engine import MockEngineAdapter
 from llm_eval.adapters.vllm_client import VLLMEngineAdapter
 from llm_eval.core.metrics import BenchmarkSummary
+from llm_eval.core.workload import SyntheticPromptGenerator
 from llm_eval.reporting.comparison import compare_summaries
 from llm_eval.reporting.markdown import render_benchmark_markdown, render_comparison_markdown
 from llm_eval.runner import BenchmarkRunner
@@ -32,8 +34,12 @@ def build_parser() -> argparse.ArgumentParser:
     bench_parser.add_argument("--concurrency", type=int, default=4, help="Concurrent request limit.")
     bench_parser.add_argument("--num-requests", type=int, default=16, help="Total benchmark requests.")
     bench_parser.add_argument("--max-tokens", type=int, default=32, help="Maximum generated tokens per request.")
+    bench_parser.add_argument("--request-rate", type=float, default=None, help="Target request arrival rate (req/s) for Poisson schedule.")
+    bench_parser.add_argument("--synthetic-prompts", action="store_true", help="Generate synthetic prompts with variable context length.")
+    bench_parser.add_argument("--prompt-tokens", type=int, default=128, help="Mean token length for synthetic prompts.")
     bench_parser.add_argument("--output", type=Path, default=None, help="Filepath to write JSON summary results.")
     bench_parser.add_argument("--report", type=Path, default=None, help="Filepath to write Markdown report.")
+    bench_parser.add_argument("--export-csv", type=Path, default=None, help="Filepath to export per-request timings to CSV.")
 
     # Subcommand: report
     report_parser = subparsers.add_parser("report", help="Generate a Markdown report from a JSON benchmark file.")
@@ -51,6 +57,18 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _write_trace_csv(path: Path, records: list) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["request_id", "prompt_tokens", "output_tokens", "queue_delay_ms", "ttft_ms", "total_latency_ms", "error"])
+        for r in records:
+            ttft_ms = round(r.ttft * 1000, 2) if r.ttft is not None else ""
+            lat_ms = round(r.total_latency * 1000, 2) if r.total_latency is not None else ""
+            q_ms = round(r.queue_delay_s * 1000, 2)
+            writer.writerow([r.request_id, r.prompt_tokens, r.output_tokens, q_ms, ttft_ms, lat_ms, r.error or ""])
+
+
 async def _run_benchmark_command(args: argparse.Namespace) -> int:
     if args.mock:
         adapter = MockEngineAdapter(
@@ -65,13 +83,24 @@ async def _run_benchmark_command(args: argparse.Namespace) -> int:
         )
 
     runner = BenchmarkRunner(adapter=adapter, model_name=args.model)
-    prompts = [f"Performance evaluation prompt #{i} for throughput testing" for i in range(args.num_requests)]
 
-    print(f"Executing benchmark: {len(prompts)} requests, concurrency={args.concurrency}, model={args.model}...")
+    if args.synthetic_prompts:
+        gen = SyntheticPromptGenerator()
+        prompts = gen.generate_prompt_batch(
+            num_requests=args.num_requests,
+            mean_tokens=args.prompt_tokens,
+        )
+    else:
+        prompts = [f"Performance evaluation prompt #{i} for throughput testing" for i in range(args.num_requests)]
+
+    rate_info = f", arrival_rate={args.request_rate} req/s" if args.request_rate else ""
+    print(f"Executing benchmark: {len(prompts)} requests, concurrency={args.concurrency}{rate_info}, model={args.model}...")
+
     summary = await runner.run_benchmark(
         prompts=prompts,
         concurrency=args.concurrency,
         max_tokens_per_request=args.max_tokens,
+        request_rate=args.request_rate,
     )
 
     summary_dict = summary.to_dict()
@@ -79,6 +108,10 @@ async def _run_benchmark_command(args: argparse.Namespace) -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(summary_dict, indent=2), encoding="utf-8")
         print(f"Benchmark JSON saved to {args.output}")
+
+    if args.export_csv:
+        _write_trace_csv(args.export_csv, summary.records)
+        print(f"Request trace CSV saved to {args.export_csv}")
 
     md_report = render_benchmark_markdown(summary, title=f"LLM Benchmark: {args.model}")
     if args.report:

@@ -8,6 +8,7 @@ from collections.abc import Sequence
 
 from llm_eval.adapters.base import BaseEngineAdapter
 from llm_eval.core.metrics import BenchmarkSummary, RequestRecord, compute_benchmark_summary
+from llm_eval.core.workload import PoissonArrivalSchedule
 from llm_eval.telemetry.otel import GenAITelemetry
 
 
@@ -68,22 +69,39 @@ class BenchmarkRunner:
         prompts: Sequence[str],
         concurrency: int = 4,
         max_tokens_per_request: int = 32,
+        request_rate: float | None = None,
     ) -> BenchmarkSummary:
-        """Runs benchmark across prompts with a fixed concurrency limit."""
+        """
+        Runs benchmark across prompts with a fixed concurrency limit and optional
+        Poisson arrival scheduling.
+        """
         semaphore = asyncio.Semaphore(concurrency)
         records: list[RequestRecord] = []
 
-        async def _bounded_worker(idx: int, p: str):
+        schedule_offsets = (
+            PoissonArrivalSchedule(request_rate).generate_schedule(len(prompts))
+            if request_rate is not None and request_rate > 0
+            else [0.0] * len(prompts)
+        )
+
+        overall_start = time.perf_counter()
+
+        async def _bounded_worker(idx: int, p: str, offset_s: float):
+            if offset_s > 0:
+                await asyncio.sleep(offset_s)
+
+            queue_start = time.perf_counter()
             async with semaphore:
+                queue_delay = time.perf_counter() - queue_start
                 rec = await self._execute_single_request(
                     request_id=f"req-{idx}",
                     prompt=p,
                     max_tokens=max_tokens_per_request,
                 )
+                rec.queue_delay_s = queue_delay
                 records.append(rec)
 
-        overall_start = time.perf_counter()
-        tasks = [_bounded_worker(i, p) for i, p in enumerate(prompts)]
+        tasks = [_bounded_worker(i, p, schedule_offsets[i]) for i, p in enumerate(prompts)]
         await asyncio.gather(*tasks)
         overall_duration = time.perf_counter() - overall_start
 

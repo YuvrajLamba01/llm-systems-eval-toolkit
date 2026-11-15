@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from llm_eval.reporting.histogram import render_ascii_histogram
+
 if TYPE_CHECKING:
     from llm_eval.core.metrics import BenchmarkSummary
     from llm_eval.reporting.comparison import ComparisonResult
@@ -26,6 +28,8 @@ def render_benchmark_markdown(summary: BenchmarkSummary, title: str = "LLM Infer
         f"| **Duration** | {summary.duration_seconds:.2f} s |",
         f"| **Request Throughput** | {summary.request_throughput:.2f} req/s |",
         f"| **Token Throughput** | {summary.token_throughput:.2f} tok/s |",
+        f"| **Queue Delay (Mean)** | {summary.queue_delay_mean*1000:.2f} ms |",
+        f"| **Queue Delay (p95)** | {summary.queue_delay_p95*1000:.2f} ms |",
         "",
         "## Latency Decomposition (ms)",
         "",
@@ -36,6 +40,17 @@ def render_benchmark_markdown(summary: BenchmarkSummary, title: str = "LLM Infer
         f"| **ITL** (Inter-Token Latency) | {summary.itl_mean*1000:.2f} | {summary.itl_p50*1000:.2f} | {summary.itl_p90*1000:.2f} | {summary.itl_p95*1000:.2f} | {summary.itl_p99*1000:.2f} |",
         "",
     ]
+
+    if summary.raw_ttft_list:
+        lines.extend([
+            "## TTFT Tail Latency Distribution",
+            "",
+            "```text",
+            render_ascii_histogram(summary.raw_ttft_list, num_bins=5, unit="ms"),
+            "```",
+            "",
+        ])
+
     return "\n".join(lines)
 
 

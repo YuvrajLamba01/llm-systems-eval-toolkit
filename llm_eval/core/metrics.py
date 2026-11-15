@@ -18,6 +18,7 @@ class RequestRecord:
     token_timestamps: list[float] = field(default_factory=list)
     output_tokens: int = 0
     error: str | None = None
+    queue_delay_s: float = 0.0
 
     @property
     def ttft(self) -> float | None:
@@ -83,6 +84,15 @@ class BenchmarkSummary:
     itl_p95: float
     itl_p99: float
 
+    # Queuing delay (seconds)
+    queue_delay_mean: float = 0.0
+    queue_delay_p95: float = 0.0
+
+    # Raw latencies and records for detailed histogram / trace analysis
+    raw_ttft_list: list[float] = field(default_factory=list)
+    raw_itl_list: list[float] = field(default_factory=list)
+    records: list[RequestRecord] = field(default_factory=list)
+
     def to_dict(self) -> dict:
         return {
             "total_requests": self.total_requests,
@@ -93,6 +103,10 @@ class BenchmarkSummary:
             "duration_seconds": round(self.duration_seconds, 4),
             "request_throughput_rps": round(self.request_throughput, 2),
             "token_throughput_tps": round(self.token_throughput, 2),
+            "queue_delay_ms": {
+                "mean": round(self.queue_delay_mean * 1000, 2),
+                "p95": round(self.queue_delay_p95 * 1000, 2),
+            },
             "ttft_ms": {
                 "mean": round(self.ttft_mean * 1000, 2),
                 "p50": round(self.ttft_p50 * 1000, 2),
@@ -122,6 +136,7 @@ class BenchmarkSummary:
         ttft = data.get("ttft_ms", {})
         tpot = data.get("tpot_ms", {})
         itl = data.get("itl_ms", {})
+        queue = data.get("queue_delay_ms", {})
         return cls(
             total_requests=data["total_requests"],
             successful_requests=data["successful_requests"],
@@ -131,6 +146,8 @@ class BenchmarkSummary:
             duration_seconds=data["duration_seconds"],
             request_throughput=data.get("request_throughput_rps", 0.0),
             token_throughput=data.get("token_throughput_tps", 0.0),
+            queue_delay_mean=queue.get("mean", 0.0) / 1000.0,
+            queue_delay_p95=queue.get("p95", 0.0) / 1000.0,
             ttft_mean=ttft.get("mean", 0.0) / 1000.0,
             ttft_p50=ttft.get("p50", 0.0) / 1000.0,
             ttft_p90=ttft.get("p90", 0.0) / 1000.0,
@@ -175,6 +192,10 @@ def compute_benchmark_summary(records: list[RequestRecord], duration_seconds: fl
     tpot_mean, tpot_p50, tpot_p90, tpot_p95, tpot_p99 = _stats(tpots)
     itl_mean, itl_p50, itl_p90, itl_p95, itl_p99 = _stats(itls)
 
+    queue_delays = [r.queue_delay_s for r in records]
+    queue_mean = float(np.mean(queue_delays)) if queue_delays else 0.0
+    queue_p95 = float(np.percentile(queue_delays, 95)) if queue_delays else 0.0
+
     req_tps = len(successful) / max(0.001, duration_seconds)
     tok_tps = total_output_tokens / max(0.001, duration_seconds)
 
@@ -187,6 +208,8 @@ def compute_benchmark_summary(records: list[RequestRecord], duration_seconds: fl
         duration_seconds=duration_seconds,
         request_throughput=req_tps,
         token_throughput=tok_tps,
+        queue_delay_mean=queue_mean,
+        queue_delay_p95=queue_p95,
         ttft_mean=ttft_mean,
         ttft_p50=ttft_p50,
         ttft_p90=ttft_p90,
@@ -202,4 +225,7 @@ def compute_benchmark_summary(records: list[RequestRecord], duration_seconds: fl
         itl_p90=itl_p90,
         itl_p95=itl_p95,
         itl_p99=itl_p99,
+        raw_ttft_list=ttfts,
+        raw_itl_list=itls,
+        records=records,
     )
