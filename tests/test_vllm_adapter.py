@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import io
+import unittest
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from llm_eval.adapters.vllm_client import (
     OpenAICompatibleEngineAdapter,
@@ -35,34 +34,38 @@ def test_adapter_ecosystem_aliases():
     assert OpenAICompatibleEngineAdapter is VLLMEngineAdapter
 
 
-@pytest.mark.asyncio
-async def test_generate_stream_sse_parsing():
-    """Verify generate_stream correctly parses OpenAI/vLLM/SGLang SSE chunks."""
-    adapter = VLLMEngineAdapter(
-        base_url="http://localhost:8000/v1",
-        model_name="meta-llama/Llama-3-8B-Instruct",
-        api_key="sk-test-token",
-    )
+class TestVLLMAdapterAsync(unittest.IsolatedAsyncioTestCase):
+    async def test_generate_stream_sse_parsing(self):
+        """Verify generate_stream correctly parses OpenAI/vLLM/SGLang SSE chunks."""
+        adapter = VLLMEngineAdapter(
+            base_url="http://localhost:8000/v1",
+            model_name="meta-llama/Llama-3-8B-Instruct",
+            api_key="sk-test-token",
+        )
 
-    sse_data = (
-        b": ping\n\n"
-        b'data: {"choices": [{"delta": {"content": "Hello"}}]}\n\n'
-        b'data: {"choices": [{"delta": {"content": " world"}}]}\n\n'
-        b'data: {"choices": [{"delta": {"content": "!"}}]}\n\n'
-        b"data: [DONE]\n\n"
-    )
+        sse_data = (
+            b": ping\n\n"
+            b'data: {"choices": [{"delta": {"content": "Hello"}}]}\n\n'
+            b'data: {"choices": [{"delta": {"content": " world"}}]}\n\n'
+            b'data: {"choices": [{"delta": {"content": "!"}}]}\n\n'
+            b"data: [DONE]\n\n"
+        )
 
-    mock_resp = io.BytesIO(sse_data)
-    mock_resp.close = MagicMock()
+        mock_resp = io.BytesIO(sse_data)
+        mock_resp.close = MagicMock()
 
-    with patch("urllib.request.urlopen", return_value=mock_resp) as mock_urlopen:
-        tokens = []
-        async for token in adapter.generate_stream(prompt="Hi", max_tokens=10):
-            tokens.append(token)
+        with patch("urllib.request.urlopen", return_value=mock_resp) as mock_urlopen:
+            tokens = []
+            async for token in adapter.generate_stream(prompt="Hi", max_tokens=10):
+                tokens.append(token)
 
-        assert tokens == ["Hello", " world", "!"]
-        mock_urlopen.assert_called_once()
-        req = mock_urlopen.call_args[0][0]
-        assert req.full_url == "http://localhost:8000/v1/chat/completions"
-        assert req.headers["Authorization"] == "Bearer sk-test-token"
-        assert req.headers["Content-type"] == "application/json"
+            self.assertEqual(tokens, ["Hello", " world", "!"])
+            mock_urlopen.assert_called_once()
+            req = mock_urlopen.call_args[0][0]
+            self.assertEqual(req.full_url, "http://localhost:8000/v1/chat/completions")
+            self.assertEqual(req.headers["Authorization"], "Bearer sk-test-token")
+            self.assertEqual(req.headers["Content-type"], "application/json")
+
+
+if __name__ == "__main__":
+    unittest.main()
