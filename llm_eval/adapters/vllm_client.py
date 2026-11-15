@@ -11,7 +11,7 @@ from llm_eval.adapters.base import BaseEngineAdapter
 
 
 class VLLMEngineAdapter(BaseEngineAdapter):
-    """Client for vLLM OpenAI-compatible /v1/chat/completions endpoint."""
+    """Client for vLLM, SGLang, and OpenAI-compatible /v1/chat/completions endpoints."""
 
     def __init__(
         self,
@@ -25,14 +25,21 @@ class VLLMEngineAdapter(BaseEngineAdapter):
         self.api_key = api_key
         self.timeout = timeout
 
+    @property
+    def endpoint_url(self) -> str:
+        """Construct normalized /v1/chat/completions URL without duplicate /v1 prefixes."""
+        base = self.base_url
+        base = base.removesuffix("/v1")
+        return f"{base}/v1/chat/completions"
+
     async def generate_stream(
         self,
         prompt: str,
         max_tokens: int,
         temperature: float = 0.0,
     ) -> AsyncIterator[str]:
-        """Streams tokens from vLLM SSE /v1/chat/completions."""
-        url = f"{self.base_url}/v1/chat/completions"
+        """Streams tokens from OpenAI-compatible SSE /v1/chat/completions."""
+        url = self.endpoint_url
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
@@ -82,3 +89,8 @@ class VLLMEngineAdapter(BaseEngineAdapter):
                         continue
         finally:
             response.close()
+
+
+# Cross-ecosystem aliases
+SGLangEngineAdapter = VLLMEngineAdapter
+OpenAICompatibleEngineAdapter = VLLMEngineAdapter
