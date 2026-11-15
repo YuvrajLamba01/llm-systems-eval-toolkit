@@ -129,6 +129,60 @@ def test_cli_compare_regression_exit_code(tmp_path: Path):
     assert "REGRESSION" in report_file.read_text(encoding="utf-8")
 
 
+def test_cli_compare_with_p_value_gating(tmp_path: Path):
+    base_file = tmp_path / "base.json"
+    cand_file = tmp_path / "cand.json"
+    report_file = tmp_path / "comp_pval.md"
+
+    base_summary = {
+        "total_requests": 20,
+        "successful_requests": 20,
+        "failed_requests": 0,
+        "total_prompt_tokens": 100,
+        "total_output_tokens": 200,
+        "duration_seconds": 1.0,
+        "request_throughput_rps": 20.0,
+        "token_throughput_tps": 200.0,
+        "ttft_ms": {"mean": 20.0, "std": 1.0, "p50": 20.0, "p90": 22.0, "p95": 23.0, "p99": 24.0},
+        "tpot_ms": {"mean": 5.0, "std": 0.5, "p50": 5.0, "p90": 6.0, "p95": 6.5, "p99": 7.0},
+        "itl_ms": {"mean": 5.0, "std": 0.5, "p50": 5.0, "p90": 6.0, "p95": 6.5, "p99": 7.0},
+    }
+    base_file.write_text(json.dumps(base_summary), encoding="utf-8")
+
+    # Candidate has slight 8% mean TTFT increase (21.6ms), but large std so p > 0.01 (insignificant)
+    cand_summary = dict(base_summary)
+    cand_summary["ttft_ms"] = {
+        "mean": 21.6,
+        "std": 8.0,
+        "p50": 21.6,
+        "p90": 25.0,
+        "p95": 27.0,
+        "p99": 30.0,
+    }
+    cand_file.write_text(json.dumps(cand_summary), encoding="utf-8")
+
+    # With strict alpha=0.001, insignificant regression should NOT fail
+    exit_code = main(
+        [
+            "compare",
+            "--baseline",
+            str(base_file),
+            "--candidate",
+            str(cand_file),
+            "--threshold",
+            "5.0",
+            "--p-value",
+            "0.001",
+            "--output",
+            str(report_file),
+            "--fail-on-regression",
+        ]
+    )
+    assert exit_code == 0
+    assert report_file.exists()
+    assert "p-value" in report_file.read_text(encoding="utf-8")
+
+
 def test_cli_benchmark_poisson_and_csv(tmp_path: Path):
     output_json = tmp_path / "poisson_bench.json"
     output_csv = tmp_path / "trace.csv"

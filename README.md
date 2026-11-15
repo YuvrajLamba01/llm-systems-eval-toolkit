@@ -11,6 +11,7 @@ A reproducible, high-precision benchmarking, latency decomposition, and observab
 ## Key Capabilities
 
 * **Full Latency Decomposition:** Measures microsecond-accurate Time-to-First-Token (TTFT), Time-per-Output-Token (TPOT), and Inter-Token Latency (ITL) percentiles (p50, p90, p95, p99).
+* **Statistical Significance & Regression Gating:** Employs Welch's two-sample t-test and Cohen's d effect size (`--p-value`) on TTFT and TPOT distributions to scientifically distinguish genuine performance regressions from hardware or network jitter.
 * **OpenTelemetry GenAI Semantic Conventions:** Emits spans and metrics conforming strictly to OpenTelemetry GenAI standards (`gen_ai.client.operation.duration`, `gen_ai.client.token.usage`, `gen_ai.server.time_to_first_token`).
 * **Poisson Process Traffic Modeling:** Simulates realistic production traffic arrivals with exponentially distributed inter-arrival times (`--request-rate`) to analyze queueing delays and scheduler contention.
 * **Context Length Scaling:** Synthetic prompt generation (`--synthetic-prompts`) with variable token context windows.
@@ -32,6 +33,7 @@ llm-systems-eval-toolkit/
 │   ├── runner.py            # Async bounded-concurrency execution engine
 │   ├── core/
 │   │   ├── metrics.py       # Microsecond latency decomposition & percentile calculation
+│   │   ├── statistics.py    # Welch's t-test, Cohen's d effect size, & hypothesis testing
 │   │   └── workload.py      # Poisson arrival scheduling & synthetic prompt generation
 │   ├── telemetry/
 │   │   └── otel.py          # OpenTelemetry GenAI span & metric instruments
@@ -84,14 +86,15 @@ llm-eval benchmark \
 llm-eval benchmark --mock --num-requests 20 --output results/mock.json
 ```
 
-### 2. Compare Against Baseline & Enforce CI Regression Gate
+### 2. Compare Against Baseline & Enforce Statistical Regression Gate
 
 ```bash
-# Detect regressions with a 5% threshold (exits with code 1 if violated)
+# Detect statistically significant regressions with Welch's t-test and Cohen's d (p < 0.05)
 llm-eval compare \
   --baseline results/baseline.json \
   --candidate results/candidate.json \
   --threshold 5.0 \
+  --p-value 0.05 \
   --output results/comparison.md \
   --fail-on-regression
 ```

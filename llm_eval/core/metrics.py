@@ -86,12 +86,18 @@ class BenchmarkSummary:
     itl_p95: float
     itl_p99: float
 
+    # Standard deviations (seconds)
+    ttft_std: float = 0.0
+    tpot_std: float = 0.0
+    itl_std: float = 0.0
+
     # Queuing delay (seconds)
     queue_delay_mean: float = 0.0
     queue_delay_p95: float = 0.0
 
     # Raw latencies and records for detailed histogram / trace analysis
     raw_ttft_list: list[float] = field(default_factory=list)
+    raw_tpot_list: list[float] = field(default_factory=list)
     raw_itl_list: list[float] = field(default_factory=list)
     records: list[RequestRecord] = field(default_factory=list)
 
@@ -111,6 +117,7 @@ class BenchmarkSummary:
             },
             "ttft_ms": {
                 "mean": round(self.ttft_mean * 1000, 2),
+                "std": round(self.ttft_std * 1000, 2),
                 "p50": round(self.ttft_p50 * 1000, 2),
                 "p90": round(self.ttft_p90 * 1000, 2),
                 "p95": round(self.ttft_p95 * 1000, 2),
@@ -118,6 +125,7 @@ class BenchmarkSummary:
             },
             "tpot_ms": {
                 "mean": round(self.tpot_mean * 1000, 2),
+                "std": round(self.tpot_std * 1000, 2),
                 "p50": round(self.tpot_p50 * 1000, 2),
                 "p90": round(self.tpot_p90 * 1000, 2),
                 "p95": round(self.tpot_p95 * 1000, 2),
@@ -125,6 +133,7 @@ class BenchmarkSummary:
             },
             "itl_ms": {
                 "mean": round(self.itl_mean * 1000, 2),
+                "std": round(self.itl_std * 1000, 2),
                 "p50": round(self.itl_p50 * 1000, 2),
                 "p90": round(self.itl_p90 * 1000, 2),
                 "p95": round(self.itl_p95 * 1000, 2),
@@ -151,16 +160,19 @@ class BenchmarkSummary:
             queue_delay_mean=queue.get("mean", 0.0) / 1000.0,
             queue_delay_p95=queue.get("p95", 0.0) / 1000.0,
             ttft_mean=ttft.get("mean", 0.0) / 1000.0,
+            ttft_std=ttft.get("std", 0.0) / 1000.0,
             ttft_p50=ttft.get("p50", 0.0) / 1000.0,
             ttft_p90=ttft.get("p90", 0.0) / 1000.0,
             ttft_p95=ttft.get("p95", 0.0) / 1000.0,
             ttft_p99=ttft.get("p99", 0.0) / 1000.0,
             tpot_mean=tpot.get("mean", 0.0) / 1000.0,
+            tpot_std=tpot.get("std", 0.0) / 1000.0,
             tpot_p50=tpot.get("p50", 0.0) / 1000.0,
             tpot_p90=tpot.get("p90", 0.0) / 1000.0,
             tpot_p95=tpot.get("p95", 0.0) / 1000.0,
             tpot_p99=tpot.get("p99", 0.0) / 1000.0,
             itl_mean=itl.get("mean", 0.0) / 1000.0,
+            itl_std=itl.get("std", 0.0) / 1000.0,
             itl_p50=itl.get("p50", 0.0) / 1000.0,
             itl_p90=itl.get("p90", 0.0) / 1000.0,
             itl_p95=itl.get("p95", 0.0) / 1000.0,
@@ -180,21 +192,23 @@ def compute_benchmark_summary(
     tpots = [r.tpot for r in successful if r.tpot is not None]
     itls = [itl for r in successful for itl in r.inter_token_latencies]
 
-    def _stats(arr: list[float]) -> tuple[float, float, float, float, float]:
+    def _stats(arr: list[float]) -> tuple[float, float, float, float, float, float]:
         if not arr:
-            return 0.0, 0.0, 0.0, 0.0, 0.0
+            return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         np_arr = np.asarray(arr)
+        std_val = float(np.std(np_arr, ddof=1)) if len(np_arr) > 1 else 0.0
         return (
             float(np.mean(np_arr)),
+            std_val,
             float(np.percentile(np_arr, 50)),
             float(np.percentile(np_arr, 90)),
             float(np.percentile(np_arr, 95)),
             float(np.percentile(np_arr, 99)),
         )
 
-    ttft_mean, ttft_p50, ttft_p90, ttft_p95, ttft_p99 = _stats(ttfts)
-    tpot_mean, tpot_p50, tpot_p90, tpot_p95, tpot_p99 = _stats(tpots)
-    itl_mean, itl_p50, itl_p90, itl_p95, itl_p99 = _stats(itls)
+    ttft_mean, ttft_std, ttft_p50, ttft_p90, ttft_p95, ttft_p99 = _stats(ttfts)
+    tpot_mean, tpot_std, tpot_p50, tpot_p90, tpot_p95, tpot_p99 = _stats(tpots)
+    itl_mean, itl_std, itl_p50, itl_p90, itl_p95, itl_p99 = _stats(itls)
 
     queue_delays = [r.queue_delay_s for r in records]
     queue_mean = float(np.mean(queue_delays)) if queue_delays else 0.0
@@ -215,21 +229,25 @@ def compute_benchmark_summary(
         queue_delay_mean=queue_mean,
         queue_delay_p95=queue_p95,
         ttft_mean=ttft_mean,
+        ttft_std=ttft_std,
         ttft_p50=ttft_p50,
         ttft_p90=ttft_p90,
         ttft_p95=ttft_p95,
         ttft_p99=ttft_p99,
         tpot_mean=tpot_mean,
+        tpot_std=tpot_std,
         tpot_p50=tpot_p50,
         tpot_p90=tpot_p90,
         tpot_p95=tpot_p95,
         tpot_p99=tpot_p99,
         itl_mean=itl_mean,
+        itl_std=itl_std,
         itl_p50=itl_p50,
         itl_p90=itl_p90,
         itl_p95=itl_p95,
         itl_p99=itl_p99,
         raw_ttft_list=ttfts,
+        raw_tpot_list=tpots,
         raw_itl_list=itls,
         records=records,
     )

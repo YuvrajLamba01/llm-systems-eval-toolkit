@@ -110,6 +110,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Regression threshold percentage (default: 5.0%%).",
     )
     compare_parser.add_argument(
+        "--p-value",
+        type=float,
+        default=None,
+        help="Statistical significance alpha (e.g., 0.05). If set, regressions are gated on p < alpha.",
+    )
+    compare_parser.add_argument(
         "--output", type=Path, default=None, help="Filepath to save comparison Markdown report."
     )
     compare_parser.add_argument(
@@ -252,7 +258,12 @@ def _run_compare_command(args: argparse.Namespace) -> int:
     baseline = BenchmarkSummary.from_dict(base_raw)
     candidate = BenchmarkSummary.from_dict(cand_raw)
 
-    result = compare_summaries(baseline, candidate, regression_threshold_pct=args.threshold)
+    result = compare_summaries(
+        baseline,
+        candidate,
+        regression_threshold_pct=args.threshold,
+        alpha=args.p_value,
+    )
     md = render_comparison_markdown(result)
 
     if args.output:
