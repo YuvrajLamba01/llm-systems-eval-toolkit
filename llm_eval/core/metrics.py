@@ -116,6 +116,38 @@ class BenchmarkSummary:
             },
         }
 
+    @classmethod
+    def from_dict(cls, data: dict) -> BenchmarkSummary:
+        """Reconstruct a BenchmarkSummary from a serialized dictionary."""
+        ttft = data.get("ttft_ms", {})
+        tpot = data.get("tpot_ms", {})
+        itl = data.get("itl_ms", {})
+        return cls(
+            total_requests=data["total_requests"],
+            successful_requests=data["successful_requests"],
+            failed_requests=data["failed_requests"],
+            total_prompt_tokens=data["total_prompt_tokens"],
+            total_output_tokens=data["total_output_tokens"],
+            duration_seconds=data["duration_seconds"],
+            request_throughput=data.get("request_throughput_rps", 0.0),
+            token_throughput=data.get("token_throughput_tps", 0.0),
+            ttft_mean=ttft.get("mean", 0.0) / 1000.0,
+            ttft_p50=ttft.get("p50", 0.0) / 1000.0,
+            ttft_p90=ttft.get("p90", 0.0) / 1000.0,
+            ttft_p95=ttft.get("p95", 0.0) / 1000.0,
+            ttft_p99=ttft.get("p99", 0.0) / 1000.0,
+            tpot_mean=tpot.get("mean", 0.0) / 1000.0,
+            tpot_p50=tpot.get("p50", 0.0) / 1000.0,
+            tpot_p90=tpot.get("p90", 0.0) / 1000.0,
+            tpot_p95=tpot.get("p95", 0.0) / 1000.0,
+            tpot_p99=tpot.get("p99", 0.0) / 1000.0,
+            itl_mean=itl.get("mean", 0.0) / 1000.0,
+            itl_p50=itl.get("p50", 0.0) / 1000.0,
+            itl_p90=itl.get("p90", 0.0) / 1000.0,
+            itl_p95=itl.get("p95", 0.0) / 1000.0,
+            itl_p99=itl.get("p99", 0.0) / 1000.0,
+        )
+
 
 def compute_benchmark_summary(records: list[RequestRecord], duration_seconds: float) -> BenchmarkSummary:
     """Calculate summary statistics from a list of request records."""
