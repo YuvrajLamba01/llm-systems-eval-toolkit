@@ -22,7 +22,17 @@ class MockEngineAdapter(BaseEngineAdapter):
     ):
         self.prefill_latency_s = prefill_latency_s
         self.decode_latency_per_token_s = decode_latency_per_token_s
-        self.simulated_tokens = simulated_tokens or ["The", " quick", " brown", " fox", " jumps", " over", " the", " lazy", " dog."]
+        self.simulated_tokens = simulated_tokens or [
+            "The",
+            " quick",
+            " brown",
+            " fox",
+            " jumps",
+            " over",
+            " the",
+            " lazy",
+            " dog.",
+        ]
 
     async def generate_stream(
         self,

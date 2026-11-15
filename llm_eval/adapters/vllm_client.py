@@ -13,9 +13,17 @@ from llm_eval.adapters.base import BaseEngineAdapter
 class VLLMEngineAdapter(BaseEngineAdapter):
     """Client for vLLM OpenAI-compatible /v1/chat/completions endpoint."""
 
-    def __init__(self, base_url: str = "http://localhost:8000", model: str = "default"):
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8000",
+        model_name: str = "default",
+        api_key: str | None = None,
+        timeout: float = 60.0,
+    ):
         self.base_url = base_url.rstrip("/")
-        self.model = model
+        self.model = model_name
+        self.api_key = api_key
+        self.timeout = timeout
 
     async def generate_stream(
         self,
@@ -33,16 +41,20 @@ class VLLMEngineAdapter(BaseEngineAdapter):
             "stream": True,
         }
 
+        headers = {"Content-Type": "application/json"}
+        if self.api_key and self.api_key != "EMPTY":
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
         # Run blocking network call in thread executor
         loop = asyncio.get_running_loop()
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers=headers,
         )
 
         def _open():
-            return urllib.request.urlopen(req, timeout=60)
+            return urllib.request.urlopen(req, timeout=self.timeout)
 
         response = await loop.run_in_executor(None, _open)
 

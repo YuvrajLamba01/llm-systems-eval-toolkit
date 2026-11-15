@@ -39,10 +39,31 @@ class SyntheticPromptGenerator:
     """Generates synthetic prompts of controlled token lengths for context-window scaling tests."""
 
     _VOCABULARY: tuple[str, ...] = (
-        "quantum", "neural", "gradient", "transformer", "attention", "tensor",
-        "matrix", "backpropagation", "pipeline", "cache", "latency", "throughput",
-        "compiler", "kernel", "memory", "bandwidth", "vector", "parallel", "dispatch",
-        "speculative", "prefix", "continuous", "batching", "scheduler", "token",
+        "quantum",
+        "neural",
+        "gradient",
+        "transformer",
+        "attention",
+        "tensor",
+        "matrix",
+        "backpropagation",
+        "pipeline",
+        "cache",
+        "latency",
+        "throughput",
+        "compiler",
+        "kernel",
+        "memory",
+        "bandwidth",
+        "vector",
+        "parallel",
+        "dispatch",
+        "speculative",
+        "prefix",
+        "continuous",
+        "batching",
+        "scheduler",
+        "token",
     )
 
     def __init__(self, seed: int | None = 42):

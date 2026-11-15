@@ -5,7 +5,9 @@ from llm_eval.reporting.comparison import compare_summaries
 from llm_eval.reporting.markdown import render_benchmark_markdown, render_comparison_markdown
 
 
-def _create_sample_summary(req_tps: float = 10.0, tok_tps: float = 200.0, ttft_p50: float = 0.04) -> BenchmarkSummary:
+def _create_sample_summary(
+    req_tps: float = 10.0, tok_tps: float = 200.0, ttft_p50: float = 0.04
+) -> BenchmarkSummary:
     return BenchmarkSummary(
         total_requests=20,
         successful_requests=20,

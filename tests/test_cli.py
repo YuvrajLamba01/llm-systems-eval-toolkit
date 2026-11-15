@@ -8,31 +8,45 @@ from llm_eval.cli import build_parser, main
 
 def test_cli_parser_structure():
     parser = build_parser()
-    args = parser.parse_args(["benchmark", "--mock", "--concurrency", "2", "--num-requests", "4"])
+    args = parser.parse_args(
+        [
+            "benchmark",
+            "--mock",
+            "--concurrency",
+            "2",
+            "--num-requests",
+            "4",
+            "--prometheus-port",
+            "9100",
+        ]
+    )
     assert args.command == "benchmark"
     assert args.mock is True
     assert args.concurrency == 2
     assert args.num_requests == 4
+    assert args.prometheus_port == 9100
 
 
 def test_cli_benchmark_mock_execution(tmp_path: Path):
     output_json = tmp_path / "bench.json"
     output_md = tmp_path / "bench.md"
 
-    exit_code = main([
-        "benchmark",
-        "--mock",
-        "--concurrency",
-        "2",
-        "--num-requests",
-        "3",
-        "--max-tokens",
-        "4",
-        "--output",
-        str(output_json),
-        "--report",
-        str(output_md),
-    ])
+    exit_code = main(
+        [
+            "benchmark",
+            "--mock",
+            "--concurrency",
+            "2",
+            "--num-requests",
+            "3",
+            "--max-tokens",
+            "4",
+            "--output",
+            str(output_json),
+            "--report",
+            str(output_md),
+        ]
+    )
 
     assert exit_code == 0
     assert output_json.exists()
@@ -48,16 +62,18 @@ def test_cli_report_subcommand(tmp_path: Path):
     bench_json = tmp_path / "bench.json"
     bench_md = tmp_path / "generated_report.md"
 
-    main([
-        "benchmark",
-        "--mock",
-        "--num-requests",
-        "2",
-        "--max-tokens",
-        "2",
-        "--output",
-        str(bench_json),
-    ])
+    main(
+        [
+            "benchmark",
+            "--mock",
+            "--num-requests",
+            "2",
+            "--max-tokens",
+            "2",
+            "--output",
+            str(bench_json),
+        ]
+    )
 
     exit_code = main(["report", "--input", str(bench_json), "--output", str(bench_md)])
     assert exit_code == 0
@@ -93,18 +109,20 @@ def test_cli_compare_regression_exit_code(tmp_path: Path):
     cand_file.write_text(json.dumps(cand_summary), encoding="utf-8")
 
     # With --fail-on-regression, must return 1
-    exit_code = main([
-        "compare",
-        "--baseline",
-        str(base_file),
-        "--candidate",
-        str(cand_file),
-        "--threshold",
-        "5.0",
-        "--output",
-        str(report_file),
-        "--fail-on-regression",
-    ])
+    exit_code = main(
+        [
+            "compare",
+            "--baseline",
+            str(base_file),
+            "--candidate",
+            str(cand_file),
+            "--threshold",
+            "5.0",
+            "--output",
+            str(report_file),
+            "--fail-on-regression",
+        ]
+    )
 
     assert exit_code == 1
     assert report_file.exists()
@@ -115,25 +133,27 @@ def test_cli_benchmark_poisson_and_csv(tmp_path: Path):
     output_json = tmp_path / "poisson_bench.json"
     output_csv = tmp_path / "trace.csv"
 
-    exit_code = main([
-        "benchmark",
-        "--mock",
-        "--concurrency",
-        "2",
-        "--num-requests",
-        "3",
-        "--max-tokens",
-        "3",
-        "--request-rate",
-        "100.0",
-        "--synthetic-prompts",
-        "--prompt-tokens",
-        "32",
-        "--output",
-        str(output_json),
-        "--export-csv",
-        str(output_csv),
-    ])
+    exit_code = main(
+        [
+            "benchmark",
+            "--mock",
+            "--concurrency",
+            "2",
+            "--num-requests",
+            "3",
+            "--max-tokens",
+            "3",
+            "--request-rate",
+            "100.0",
+            "--synthetic-prompts",
+            "--prompt-tokens",
+            "32",
+            "--output",
+            str(output_json),
+            "--export-csv",
+            str(output_csv),
+        ]
+    )
 
     assert exit_code == 0
     assert output_json.exists()
@@ -142,4 +162,3 @@ def test_cli_benchmark_poisson_and_csv(tmp_path: Path):
     csv_lines = output_csv.read_text(encoding="utf-8").strip().splitlines()
     assert len(csv_lines) == 4  # Header + 3 requests
     assert "request_id" in csv_lines[0]
-

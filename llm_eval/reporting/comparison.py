@@ -10,6 +10,7 @@ from llm_eval.core.metrics import BenchmarkSummary
 @dataclass
 class ComparisonMetricItem:
     """Individual metric diff between baseline and candidate runs."""
+
     name: str
     baseline_val: float
     candidate_val: float
@@ -46,6 +47,7 @@ class ComparisonMetricItem:
 @dataclass
 class ComparisonResult:
     """Complete comparative analysis of two benchmark runs."""
+
     baseline: BenchmarkSummary
     candidate: BenchmarkSummary
     throughput_items: list[ComparisonMetricItem]

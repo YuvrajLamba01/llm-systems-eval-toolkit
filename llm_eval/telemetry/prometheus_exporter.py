@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from prometheus_client import CollectorRegistry, Gauge, generate_latest
+from prometheus_client import CollectorRegistry, Gauge, generate_latest, start_http_server
 
 from llm_eval.core.metrics import BenchmarkSummary
 
@@ -70,3 +70,9 @@ def export_summary_to_prometheus(
     queue_gauge.labels(model=model_name, quantile="0.95").set(summary.queue_delay_p95)
 
     return generate_latest(reg).decode("utf-8")
+
+
+def start_prometheus_server(port: int, registry: CollectorRegistry | None = None) -> None:
+    """Starts a standalone HTTP daemon exposing Prometheus metrics for scraping."""
+    reg = registry if registry is not None else CollectorRegistry()
+    start_http_server(port=port, registry=reg)

@@ -4,7 +4,6 @@ from llm_eval.core.metrics import RequestRecord, compute_benchmark_summary
 
 
 class TestMetrics(unittest.TestCase):
-
     def test_single_token_request_metrics(self):
         rec = RequestRecord(
             request_id="req-1",
@@ -28,7 +27,7 @@ class TestMetrics(unittest.TestCase):
             prompt_tokens=20,
             start_time=1.0,
             first_token_time=1.1,  # TTFT = 0.1s
-            end_time=1.5,          # Total = 0.5s
+            end_time=1.5,  # Total = 0.5s
             token_timestamps=[1.1, 1.2, 1.3, 1.4, 1.5],  # 5 tokens, ITLs = [0.1, 0.1, 0.1, 0.1]
             output_tokens=5,
         )

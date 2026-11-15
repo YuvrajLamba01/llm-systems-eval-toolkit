@@ -35,7 +35,27 @@ def test_prometheus_metrics_export():
 
     output = export_summary_to_prometheus(summary, model_name="llama-3-8b")
 
-    assert "llm_eval_request_throughput_rps{model=\"llama-3-8b\"} 6.67" in output
-    assert "llm_eval_token_throughput_tps{model=\"llama-3-8b\"} 213.33" in output
-    assert "llm_eval_time_to_first_token_seconds{model=\"llama-3-8b\",quantile=\"0.50\"} 0.032" in output
-    assert "llm_eval_queue_delay_seconds{model=\"llama-3-8b\",quantile=\"0.95\"} 0.005" in output
+    assert 'llm_eval_request_throughput_rps{model="llama-3-8b"} 6.67' in output
+    assert 'llm_eval_token_throughput_tps{model="llama-3-8b"} 213.33' in output
+    assert (
+        'llm_eval_time_to_first_token_seconds{model="llama-3-8b",quantile="0.50"} 0.032' in output
+    )
+    assert 'llm_eval_queue_delay_seconds{model="llama-3-8b",quantile="0.95"} 0.005' in output
+
+
+def test_start_prometheus_server_invocation(monkeypatch):
+    from prometheus_client import CollectorRegistry
+
+    from llm_eval.telemetry.prometheus_exporter import start_prometheus_server
+
+    called_port = None
+
+    def mock_start(port, registry):
+        nonlocal called_port
+        called_port = port
+
+    monkeypatch.setattr("llm_eval.telemetry.prometheus_exporter.start_http_server", mock_start)
+    reg = CollectorRegistry()
+    start_prometheus_server(port=9200, registry=reg)
+
+    assert called_port == 9200

@@ -4,7 +4,6 @@ from llm_eval.adapters.mock_engine import MockEngineAdapter
 
 
 class TestMockEngine(unittest.IsolatedAsyncioTestCase):
-
     async def test_mock_engine_streaming(self):
         engine = MockEngineAdapter(
             prefill_latency_s=0.01,

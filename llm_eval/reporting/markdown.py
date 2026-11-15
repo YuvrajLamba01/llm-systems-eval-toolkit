@@ -11,7 +11,9 @@ if TYPE_CHECKING:
     from llm_eval.reporting.comparison import ComparisonResult
 
 
-def render_benchmark_markdown(summary: BenchmarkSummary, title: str = "LLM Inference Benchmark") -> str:
+def render_benchmark_markdown(
+    summary: BenchmarkSummary, title: str = "LLM Inference Benchmark"
+) -> str:
     """Renders a single benchmark summary into a GitHub-Flavored Markdown report."""
     lines = [
         f"# {title}",
@@ -28,28 +30,30 @@ def render_benchmark_markdown(summary: BenchmarkSummary, title: str = "LLM Infer
         f"| **Duration** | {summary.duration_seconds:.2f} s |",
         f"| **Request Throughput** | {summary.request_throughput:.2f} req/s |",
         f"| **Token Throughput** | {summary.token_throughput:.2f} tok/s |",
-        f"| **Queue Delay (Mean)** | {summary.queue_delay_mean*1000:.2f} ms |",
-        f"| **Queue Delay (p95)** | {summary.queue_delay_p95*1000:.2f} ms |",
+        f"| **Queue Delay (Mean)** | {summary.queue_delay_mean * 1000:.2f} ms |",
+        f"| **Queue Delay (p95)** | {summary.queue_delay_p95 * 1000:.2f} ms |",
         "",
         "## Latency Decomposition (ms)",
         "",
         "| Metric | Mean (ms) | p50 (ms) | p90 (ms) | p95 (ms) | p99 (ms) |",
         "| :--- | :---: | :---: | :---: | :---: | :---: |",
-        f"| **TTFT** (Time to First Token) | {summary.ttft_mean*1000:.2f} | {summary.ttft_p50*1000:.2f} | {summary.ttft_p90*1000:.2f} | {summary.ttft_p95*1000:.2f} | {summary.ttft_p99*1000:.2f} |",
-        f"| **TPOT** (Time per Output Token) | {summary.tpot_mean*1000:.2f} | {summary.tpot_p50*1000:.2f} | {summary.tpot_p90*1000:.2f} | {summary.tpot_p95*1000:.2f} | {summary.tpot_p99*1000:.2f} |",
-        f"| **ITL** (Inter-Token Latency) | {summary.itl_mean*1000:.2f} | {summary.itl_p50*1000:.2f} | {summary.itl_p90*1000:.2f} | {summary.itl_p95*1000:.2f} | {summary.itl_p99*1000:.2f} |",
+        f"| **TTFT** (Time to First Token) | {summary.ttft_mean * 1000:.2f} | {summary.ttft_p50 * 1000:.2f} | {summary.ttft_p90 * 1000:.2f} | {summary.ttft_p95 * 1000:.2f} | {summary.ttft_p99 * 1000:.2f} |",
+        f"| **TPOT** (Time per Output Token) | {summary.tpot_mean * 1000:.2f} | {summary.tpot_p50 * 1000:.2f} | {summary.tpot_p90 * 1000:.2f} | {summary.tpot_p95 * 1000:.2f} | {summary.tpot_p99 * 1000:.2f} |",
+        f"| **ITL** (Inter-Token Latency) | {summary.itl_mean * 1000:.2f} | {summary.itl_p50 * 1000:.2f} | {summary.itl_p90 * 1000:.2f} | {summary.itl_p95 * 1000:.2f} | {summary.itl_p99 * 1000:.2f} |",
         "",
     ]
 
     if summary.raw_ttft_list:
-        lines.extend([
-            "## TTFT Tail Latency Distribution",
-            "",
-            "```text",
-            render_ascii_histogram(summary.raw_ttft_list, num_bins=5, unit="ms"),
-            "```",
-            "",
-        ])
+        lines.extend(
+            [
+                "## TTFT Tail Latency Distribution",
+                "",
+                "```text",
+                render_ascii_histogram(summary.raw_ttft_list, num_bins=5, unit="ms"),
+                "```",
+                "",
+            ]
+        )
 
     return "\n".join(lines)
 
@@ -75,18 +79,20 @@ def render_comparison_markdown(result: ComparisonResult) -> str:
             f"| **{item.name}** | {item.baseline_val:.2f} | {item.candidate_val:.2f} | {delta_str} | {item.status_badge} |"
         )
 
-    lines.extend([
-        "",
-        "## Latency Comparison (p50 / p95 / p99)",
-        "",
-        "| Metric | Baseline (ms) | Candidate (ms) | Delta (%) | Status |",
-        "| :--- | :---: | :---: | :---: | :---: |",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Latency Comparison (p50 / p95 / p99)",
+            "",
+            "| Metric | Baseline (ms) | Candidate (ms) | Delta (%) | Status |",
+            "| :--- | :---: | :---: | :---: | :---: |",
+        ]
+    )
 
     for item in result.latency_items:
         delta_str = f"{item.delta_pct:+.1f}%" if item.baseline_val != 0 else "N/A"
         lines.append(
-            f"| **{item.name}** | {item.baseline_val*1000:.2f} | {item.candidate_val*1000:.2f} | {delta_str} | {item.status_badge} |"
+            f"| **{item.name}** | {item.baseline_val * 1000:.2f} | {item.candidate_val * 1000:.2f} | {delta_str} | {item.status_badge} |"
         )
 
     lines.append("")

@@ -5,7 +5,6 @@ from llm_eval.runner import BenchmarkRunner
 
 
 class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
-
     async def test_end_to_end_concurrent_benchmark(self):
         engine = MockEngineAdapter(
             prefill_latency_s=0.01,

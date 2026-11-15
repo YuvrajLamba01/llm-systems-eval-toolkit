@@ -10,6 +10,7 @@ import numpy as np
 @dataclass
 class RequestRecord:
     """Raw timing record for a single streaming inference request."""
+
     request_id: str
     prompt_tokens: int
     start_time: float
@@ -54,6 +55,7 @@ class RequestRecord:
 @dataclass
 class BenchmarkSummary:
     """Aggregated benchmark statistics across multiple requests."""
+
     total_requests: int
     successful_requests: int
     failed_requests: int
@@ -61,7 +63,7 @@ class BenchmarkSummary:
     total_output_tokens: int
     duration_seconds: float
     request_throughput: float  # req/s
-    token_throughput: float    # tokens/s
+    token_throughput: float  # tokens/s
 
     # TTFT distribution (seconds)
     ttft_mean: float
@@ -166,7 +168,9 @@ class BenchmarkSummary:
         )
 
 
-def compute_benchmark_summary(records: list[RequestRecord], duration_seconds: float) -> BenchmarkSummary:
+def compute_benchmark_summary(
+    records: list[RequestRecord], duration_seconds: float
+) -> BenchmarkSummary:
     """Calculate summary statistics from a list of request records."""
     successful = [r for r in records if r.error is None and r.output_tokens > 0]
     total_prompt_tokens = sum(r.prompt_tokens for r in records)

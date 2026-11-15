@@ -42,6 +42,8 @@ def render_ascii_histogram(
         pct = (count / total) * 100.0
         bar_len = int((count / max_count) * bar_width)
         bar = "█" * bar_len
-        lines.append(f"[{lower:6.2f} - {upper:6.2f} {unit}]: {bar:<{bar_width}} ({count:3d} | {pct:5.1f}%)")
+        lines.append(
+            f"[{lower:6.2f} - {upper:6.2f} {unit}]: {bar:<{bar_width}} ({count:3d} | {pct:5.1f}%)"
+        )
 
     return "\n".join(lines)

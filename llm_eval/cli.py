@@ -27,32 +27,94 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Subcommand: benchmark
     bench_parser = subparsers.add_parser("benchmark", help="Run streaming inference benchmarks.")
-    bench_parser.add_argument("--model", type=str, default="meta-llama/Llama-3-8B-Instruct", help="Target model identifier.")
-    bench_parser.add_argument("--endpoint", type=str, default="http://localhost:8000/v1", help="vLLM server API base URL.")
+    bench_parser.add_argument(
+        "--model",
+        type=str,
+        default="meta-llama/Llama-3-8B-Instruct",
+        help="Target model identifier.",
+    )
+    bench_parser.add_argument(
+        "--endpoint", type=str, default="http://localhost:8000/v1", help="vLLM server API base URL."
+    )
     bench_parser.add_argument("--api-key", type=str, default="EMPTY", help="Optional API key.")
-    bench_parser.add_argument("--mock", action="store_true", help="Use deterministic mock engine without a live server.")
-    bench_parser.add_argument("--concurrency", type=int, default=4, help="Concurrent request limit.")
-    bench_parser.add_argument("--num-requests", type=int, default=16, help="Total benchmark requests.")
-    bench_parser.add_argument("--max-tokens", type=int, default=32, help="Maximum generated tokens per request.")
-    bench_parser.add_argument("--request-rate", type=float, default=None, help="Target request arrival rate (req/s) for Poisson schedule.")
-    bench_parser.add_argument("--synthetic-prompts", action="store_true", help="Generate synthetic prompts with variable context length.")
-    bench_parser.add_argument("--prompt-tokens", type=int, default=128, help="Mean token length for synthetic prompts.")
-    bench_parser.add_argument("--output", type=Path, default=None, help="Filepath to write JSON summary results.")
-    bench_parser.add_argument("--report", type=Path, default=None, help="Filepath to write Markdown report.")
-    bench_parser.add_argument("--export-csv", type=Path, default=None, help="Filepath to export per-request timings to CSV.")
+    bench_parser.add_argument(
+        "--mock", action="store_true", help="Use deterministic mock engine without a live server."
+    )
+    bench_parser.add_argument(
+        "--concurrency", type=int, default=4, help="Concurrent request limit."
+    )
+    bench_parser.add_argument(
+        "--num-requests", type=int, default=16, help="Total benchmark requests."
+    )
+    bench_parser.add_argument(
+        "--max-tokens", type=int, default=32, help="Maximum generated tokens per request."
+    )
+    bench_parser.add_argument(
+        "--request-rate",
+        type=float,
+        default=None,
+        help="Target request arrival rate (req/s) for Poisson schedule.",
+    )
+    bench_parser.add_argument(
+        "--synthetic-prompts",
+        action="store_true",
+        help="Generate synthetic prompts with variable context length.",
+    )
+    bench_parser.add_argument(
+        "--prompt-tokens", type=int, default=128, help="Mean token length for synthetic prompts."
+    )
+    bench_parser.add_argument(
+        "--output", type=Path, default=None, help="Filepath to write JSON summary results."
+    )
+    bench_parser.add_argument(
+        "--report", type=Path, default=None, help="Filepath to write Markdown report."
+    )
+    bench_parser.add_argument(
+        "--export-csv",
+        type=Path,
+        default=None,
+        help="Filepath to export per-request timings to CSV.",
+    )
+    bench_parser.add_argument(
+        "--prometheus-port",
+        type=int,
+        default=None,
+        help="Port to host live Prometheus /metrics HTTP exposition server.",
+    )
 
     # Subcommand: report
-    report_parser = subparsers.add_parser("report", help="Generate a Markdown report from a JSON benchmark file.")
-    report_parser.add_argument("--input", type=Path, required=True, help="Input benchmark JSON file.")
-    report_parser.add_argument("--output", type=Path, default=None, help="Output Markdown report file.")
+    report_parser = subparsers.add_parser(
+        "report", help="Generate a Markdown report from a JSON benchmark file."
+    )
+    report_parser.add_argument(
+        "--input", type=Path, required=True, help="Input benchmark JSON file."
+    )
+    report_parser.add_argument(
+        "--output", type=Path, default=None, help="Output Markdown report file."
+    )
 
     # Subcommand: compare
-    compare_parser = subparsers.add_parser("compare", help="Compare two benchmark runs and detect regressions.")
-    compare_parser.add_argument("--baseline", type=Path, required=True, help="Baseline benchmark JSON file.")
-    compare_parser.add_argument("--candidate", type=Path, required=True, help="Candidate benchmark JSON file.")
-    compare_parser.add_argument("--threshold", type=float, default=5.0, help="Regression threshold percentage (default: 5.0%%).")
-    compare_parser.add_argument("--output", type=Path, default=None, help="Filepath to save comparison Markdown report.")
-    compare_parser.add_argument("--fail-on-regression", action="store_true", help="Exit code 1 if regressions are detected.")
+    compare_parser = subparsers.add_parser(
+        "compare", help="Compare two benchmark runs and detect regressions."
+    )
+    compare_parser.add_argument(
+        "--baseline", type=Path, required=True, help="Baseline benchmark JSON file."
+    )
+    compare_parser.add_argument(
+        "--candidate", type=Path, required=True, help="Candidate benchmark JSON file."
+    )
+    compare_parser.add_argument(
+        "--threshold",
+        type=float,
+        default=5.0,
+        help="Regression threshold percentage (default: 5.0%%).",
+    )
+    compare_parser.add_argument(
+        "--output", type=Path, default=None, help="Filepath to save comparison Markdown report."
+    )
+    compare_parser.add_argument(
+        "--fail-on-regression", action="store_true", help="Exit code 1 if regressions are detected."
+    )
 
     return parser
 
@@ -61,12 +123,32 @@ def _write_trace_csv(path: Path, records: list) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, mode="w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["request_id", "prompt_tokens", "output_tokens", "queue_delay_ms", "ttft_ms", "total_latency_ms", "error"])
+        writer.writerow(
+            [
+                "request_id",
+                "prompt_tokens",
+                "output_tokens",
+                "queue_delay_ms",
+                "ttft_ms",
+                "total_latency_ms",
+                "error",
+            ]
+        )
         for r in records:
             ttft_ms = round(r.ttft * 1000, 2) if r.ttft is not None else ""
             lat_ms = round(r.total_latency * 1000, 2) if r.total_latency is not None else ""
             q_ms = round(r.queue_delay_s * 1000, 2)
-            writer.writerow([r.request_id, r.prompt_tokens, r.output_tokens, q_ms, ttft_ms, lat_ms, r.error or ""])
+            writer.writerow(
+                [
+                    r.request_id,
+                    r.prompt_tokens,
+                    r.output_tokens,
+                    q_ms,
+                    ttft_ms,
+                    lat_ms,
+                    r.error or "",
+                ]
+            )
 
 
 async def _run_benchmark_command(args: argparse.Namespace) -> int:
@@ -91,10 +173,28 @@ async def _run_benchmark_command(args: argparse.Namespace) -> int:
             mean_tokens=args.prompt_tokens,
         )
     else:
-        prompts = [f"Performance evaluation prompt #{i} for throughput testing" for i in range(args.num_requests)]
+        prompts = [
+            f"Performance evaluation prompt #{i} for throughput testing"
+            for i in range(args.num_requests)
+        ]
 
     rate_info = f", arrival_rate={args.request_rate} req/s" if args.request_rate else ""
-    print(f"Executing benchmark: {len(prompts)} requests, concurrency={args.concurrency}{rate_info}, model={args.model}...")
+    print(
+        f"Executing benchmark: {len(prompts)} requests, concurrency={args.concurrency}{rate_info}, model={args.model}..."
+    )
+
+    if args.prometheus_port:
+        from prometheus_client import CollectorRegistry
+
+        from llm_eval.telemetry.prometheus_exporter import start_prometheus_server
+
+        prom_reg = CollectorRegistry()
+        start_prometheus_server(port=args.prometheus_port, registry=prom_reg)
+        print(
+            f"Prometheus metrics HTTP exporter initialized on port {args.prometheus_port} (/metrics)"
+        )
+    else:
+        prom_reg = None
 
     summary = await runner.run_benchmark(
         prompts=prompts,
@@ -104,6 +204,14 @@ async def _run_benchmark_command(args: argparse.Namespace) -> int:
     )
 
     summary_dict = summary.to_dict()
+    if prom_reg is not None:
+        from llm_eval.telemetry.prometheus_exporter import export_summary_to_prometheus
+
+        export_summary_to_prometheus(summary, model_name=args.model, registry=prom_reg)
+        print(
+            f"Summary metrics exported to live Prometheus registry on port {args.prometheus_port}."
+        )
+
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(summary_dict, indent=2), encoding="utf-8")
