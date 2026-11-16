@@ -18,8 +18,9 @@ A reproducible, high-precision benchmarking, latency decomposition, and observab
 * **ASCII Tail-Latency Distribution:** Visualizes tail-latency clustering directly in stdout and Markdown reports.
 * **Automated Regression Gating:** Compares candidate inference runs against baselines and exits with code `1` if latency percentiles or throughput degrade beyond configurable tolerances (e.g., CI/CD gate).
 * **Pluggable Engine Adapters:**
-  * `VLLMEngineAdapter`: Async streaming SSE client for vLLM `/v1/chat/completions`.
+  * `VLLMEngineAdapter`, `SGLangEngineAdapter`, and `OpenAICompatibleEngineAdapter`: Async streaming SSE client for vLLM, SGLang, and standard OpenAI `/v1/chat/completions` endpoints with URL normalization.
   * `MockEngineAdapter`: Fully deterministic streaming engine for offline evaluation, stress testing, and CI testing without requiring physical GPUs.
+* **Live Prometheus Telemetry Daemon:** Exposes live metrics (`llm_eval_ttft_seconds`, `llm_eval_tpot_seconds`, `llm_eval_requests_total`) on a dedicated HTTP endpoint (`--prometheus-port 9090`) for Grafana scraping during continuous load tests.
 * **Trace & CSV Export:** Exports per-request microsecond traces (`--export-csv`) for external visualization and telemetry ingestion.
 
 ---
@@ -36,11 +37,12 @@ llm-systems-eval-toolkit/
 │   │   ├── statistics.py    # Welch's t-test, Cohen's d effect size, & hypothesis testing
 │   │   └── workload.py      # Poisson arrival scheduling & synthetic prompt generation
 │   ├── telemetry/
-│   │   └── otel.py          # OpenTelemetry GenAI span & metric instruments
+│   │   ├── otel.py          # OpenTelemetry GenAI span & metric instruments
+│   │   └── prometheus_server.py # Standalone HTTP Prometheus exposition daemon
 │   ├── adapters/
 │   │   ├── base.py          # Engine adapter abstract base class
 │   │   ├── mock_engine.py   # Deterministic CPU mock for CI simulation
-│   │   └── vllm_client.py   # vLLM async streaming SSE client
+│   │   └── vllm_client.py   # vLLM / SGLang / OpenAI async streaming SSE client
 │   └── reporting/
 │       ├── markdown.py      # GitHub-Flavored Markdown summary & comparison reports
 │       ├── comparison.py    # Statistical diff & regression analysis
@@ -50,8 +52,11 @@ llm-systems-eval-toolkit/
     ├── test_histogram.py
     ├── test_metrics.py
     ├── test_mock_engine.py
+    ├── test_prometheus.py
     ├── test_reporting.py
     ├── test_runner.py
+    ├── test_statistics.py
+    ├── test_vllm_adapter.py
     └── test_workload.py
 ```
 
